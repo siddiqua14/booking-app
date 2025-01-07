@@ -1,0 +1,28 @@
+# version: '3.8'
+
+services:
+  booking-app:
+    build: .
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+    environment:
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/booking_db?sslmode=disable
+    volumes:
+      - .:/app
+
+  postgres:
+    image: postgres:14
+    container_name: postgres_booking
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: booking_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
