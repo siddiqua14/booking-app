@@ -1,20 +1,19 @@
 package main
 
 import (
-	"booking-app/models"
-	_ "booking-app/routers"
-
-	"github.com/beego/beego/v2/server/web"
-	"log"
+    "github.com/beego/beego/v2/client/orm"
+    _ "github.com/lib/pq"
+    "github.com/beego/beego/v2/server/web"
+    //"booking-app/models"
+    _ "booking-app/routers"
 )
 
 func main() {
-	// Initialize database and ensure the locations table exists
-	err := models.InitializeDatabase()
-	if err != nil {
-		log.Fatalf("Failed to initialize database: %v", err)
-	}
+    orm.RegisterDriver("postgres", orm.DRPostgres)
 
-	web.Run()
+    orm.RegisterDataBase("default", "postgres", "user=postgres password=postgres host=localhost port=5432 dbname=booking_db sslmode=disable")
+
+    orm.RunSyncdb("default", false, true)
+
+    web.Run()
 }
-

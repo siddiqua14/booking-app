@@ -1,0 +1,13 @@
+w3e100@w3e100:~/go/src/booking-app$ docker exec -it postgres_booking psql -U postgres
+psql (14.15 (Debian 14.15-1.pgdg120+1))
+Type "help" for help.
+
+postgres=# DROP DATABASE booking_db;
+DROP DATABASE
+postgres=# \c booking_db
+connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" failed: FATAL:  database "booking_db" does not exist
+Previous connection kept
+postgres=# CREATE DATABASE booking_db;
+CREATE DATABASE
+postgres=# \c booking_db
+You are now connected to database "booking_db" as user "postgres".

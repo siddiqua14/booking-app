@@ -1,10 +1,11 @@
 package routers
 
 import (
-	"booking-app/controllers"
-	"github.com/beego/beego/v2/server/web"
+    "github.com/beego/beego/v2/server/web"
+    "booking-app/controllers"
 )
 
 func init() {
-	web.Router("/location", &controllers.LocationController{}, "post:AddLocation")
+    web.Router("/fetch_locations", &controllers.LocationController{}, "get:FetchAndStoreLocations")
+	//web.Router("/locations", &controllers.LocationController{}, "get:GetLocations")
 }
