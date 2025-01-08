@@ -7,5 +7,5 @@ import (
 
 func init() {
     web.Router("/fetch_locations", &controllers.LocationController{}, "get:FetchAndStoreLocations")
-    web.Router("/fetch_stays_data", &controllers.LocationController{}, "get:FetchStaysData")
+    web.Router("/fetch_stays_data", &controllers.LocationController{}, "get:FetchFilteredStaysData")
 }
