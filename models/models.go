@@ -12,15 +12,6 @@ type Location struct {
     Value         string `orm:"size(255);column(value)"`
 }
 
-type Hotel struct {
-    Id          int64     `orm:"auto;pk"`
-    LocationId  *Location `orm:"rel(fk)"`
-    Name        string    `orm:"size(255);null"`
-    HotelId     string    `orm:"size(100);null"`
-    Rating      float64   
-    ReviewScore float64   
-}
-
 type RentalProperty struct {
     ID            int     `orm:"auto"`
     IDHotel       int     `orm:"index"`
@@ -41,12 +32,16 @@ type RentalProperty struct {
 }
 
 type PropertyDetails struct {
-    Id          int64          `orm:"auto;pk"`
-    PropertyId  *RentalProperty `orm:"rel(fk)"`
-    Description string         `orm:"type(text);null"`
-    Images      string         `orm:"type(text);null"` // JSON array of image URLs
+    ID          int    `orm:"auto"`
+    HotelID     string `orm:"size(100);index"`
+    Description string `orm:"type(text)"`
+    CityInTrans string `orm:"size(255);column(city_in_trans)"`
+    ImageUrl1   string `orm:"size(500);column(image_url_1)"`
+    ImageUrl2   string `orm:"size(500);column(image_url_2)"`
+    ImageUrl3   string `orm:"size(500);column(image_url_3)"`
+    ImageUrl4   string `orm:"size(500);column(image_url_4)"`
+    ImageUrl5   string `orm:"size(500);column(image_url_5)"`
 }
-
 func init() {
-    orm.RegisterModel(new(Location), new(Hotel), new(RentalProperty), new(PropertyDetails))
+    orm.RegisterModel(new(Location), new(RentalProperty), new(PropertyDetails))
 }

@@ -10,12 +10,16 @@ import (
 
     "github.com/beego/beego/v2/client/orm"
     "github.com/beego/beego/v2/server/web"
+    "github.com/beego/beego/v2/server/web/context" 
     "booking-app/models"
 )
 
 type LocationController struct {
     web.Controller
+    apiBaseUrl string
+    apiKey     string
 }
+
 
 type FilteredLocation struct {
     DestId   string `json:"dest_id"`
@@ -85,12 +89,41 @@ var storedDestType string
 var storedHotelIDs []int
 
 
+// Init function to initialize apiBaseUrl and apiKey
+
+func (c *LocationController) Init(ctx *context.Context, controllerName, actionName string, app interface{}) {
+    // Call the base Init method
+    c.Controller.Init(ctx, controllerName, actionName, app)
+
+    // Retrieve base URL and API key from app.conf
+    apiBaseUrl, err := web.AppConfig.String("API_BASE_URL")
+    if err != nil {
+        c.Data["json"] = map[string]interface{}{"error": fmt.Sprintf("Error retrieving API Base URL: %v", err)}
+        c.ServeJSON()
+        return
+    }
+
+    apiKey, err := web.AppConfig.String("API_KEY")
+    if err != nil {
+        c.Data["json"] = map[string]interface{}{"error": fmt.Sprintf("Error retrieving API Key: %v", err)}
+        c.ServeJSON()
+        return
+    }
+
+    // Set the fields
+    c.apiBaseUrl = apiBaseUrl
+    c.apiKey = apiKey
+}
+
+// FetchAndStoreLocations retrieves locations and stores them
 func (c *LocationController) FetchAndStoreLocations() {
+    query := "New%20York"
+    url := fmt.Sprintf("%s/web/stays/auto-complete?query=%s", c.apiBaseUrl, query)
+
     // Create HTTP client
     client := &http.Client{}
 
     // Create request
-    url := "https://booking-com18.p.rapidapi.com/web/stays/auto-complete?query=New%20York"
     req, err := http.NewRequest("GET", url, nil)
     if err != nil {
         c.Data["json"] = map[string]interface{}{"error": fmt.Sprintf("Error creating request: %v", err)}
@@ -98,9 +131,9 @@ func (c *LocationController) FetchAndStoreLocations() {
         return
     }
 
-    // Add headers
+    // Add headers with dynamic API key
     req.Header.Add("x-rapidapi-host", "booking-com18.p.rapidapi.com")
-    req.Header.Add("x-rapidapi-key", "52d384abecmshb0390e7c79d8689p1a8cd1jsn9c2ed180601b")
+    req.Header.Add("x-rapidapi-key", c.apiKey)
 
     // Make request
     resp, err := client.Do(req)
@@ -130,9 +163,6 @@ func (c *LocationController) FetchAndStoreLocations() {
         return
     }
 
-    // Log API response
-    fmt.Printf("Auto-complete API Response: %+v\n", apiResponse)
-
     // Extract relevant data from the API response
     var filteredLocations []FilteredLocation
     if data, ok := apiResponse["data"].([]interface{}); ok {
@@ -151,11 +181,11 @@ func (c *LocationController) FetchAndStoreLocations() {
                     DestType: itemMap["dest_type"].(string),
                     Value:    itemMap["label"].(string),
                 }
-                 // Check if the dest_id already exists in the database before inserting
+                // Check if the dest_id already exists in the database before inserting
                 existingLocation := models.Location{DestId: location.DestId}
                 err := o.Read(&existingLocation, "DestId")
                 if err != nil {
-                     // Only insert if not already present
+                    // Only insert if not already present
                     id, err := o.Insert(location)
                     if err != nil {
                         fmt.Printf("Error inserting location: %v\n", err)
@@ -168,16 +198,12 @@ func (c *LocationController) FetchAndStoreLocations() {
             }
         }
     }
-    // Store the first location's dest_id and dest_type for fetching hotel data later
-	if len(filteredLocations) > 0 {
-		storedDestId = filteredLocations[0].DestId
-		storedDestType = filteredLocations[0].DestType
-	}
+
     // Return the filtered data in the required format
     c.Data["json"] = map[string]interface{}{
         "success": true,
-        "query": "New York",
-        "count": len(filteredLocations),
+        "query":   query,
+        "count":   len(filteredLocations),
         "data": map[string]interface{}{
             "data": filteredLocations,
         },
@@ -231,7 +257,7 @@ func getHotelData(destID, destType string) ([]HotelDetails, error) {
     }
 
     req.Header.Add("x-rapidapi-host", "booking-com18.p.rapidapi.com")
-    req.Header.Add("x-rapidapi-key", "52d384abecmshb0390e7c79d8689p1a8cd1jsn9c2ed180601b")
+    req.Header.Add("x-rapidapi-key", "3c935dc998msh43f2b397ec5205dp174193jsnb246f518916d")
 
     client := &http.Client{}
     resp, err := client.Do(req)
@@ -347,7 +373,7 @@ func (c *LocationController) FetchHotelDetails() {
         }
 
         req.Header.Add("x-rapidapi-host", "booking-com18.p.rapidapi.com")
-        req.Header.Add("x-rapidapi-key", "52d384abecmshb0390e7c79d8689p1a8cd1jsn9c2ed180601b")
+        req.Header.Add("x-rapidapi-key", "3c935dc998msh43f2b397ec5205dp174193jsnb246f518916d")
 
         client := &http.Client{}
         resp, err := client.Do(req)

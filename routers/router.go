@@ -6,9 +6,16 @@ import (
 )
 
 func init() {
+    web.Router("/", &controllers.MainController{})
+
     web.Router("/fetch_locations", &controllers.LocationController{}, "get:FetchAndStoreLocations")
     web.Router("/fetch_stays_data", &controllers.LocationController{}, "get:FetchFilteredStaysData")
     web.Router("/fetch-hotel-details", &controllers.LocationController{}, "get:FetchHotelDetails")
-    // in your router.go or wherever you define your routes
-    web.Router("/fetch-hotel-images-and-description", &controllers.LocationController{}, "get:FetchHotelImagesAndDescription")
+    web.Router("/fetch-hotel-images-and-description", &controllers.ImageDescriptionController{}, "get:FetchHotelImagesAndDescriptions")
+    // Page route
+    // Property listing endpoint
+    web.Router("/v1/property/list", &controllers.PropertyController{}, "get:ListProperties")
+    
+    // API route for AJAX calls
+    
 }

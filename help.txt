@@ -58,3 +58,5 @@ review_count = results: basicPropertyData:  reviews: reviewsCount:933
 }
 
 SELECT * FROM rental_property;
+DROP TABLE rental_property;
+DROP TABLE property_details;

@@ -4,33 +4,34 @@ import (
     "encoding/json"
     "fmt"
     "io"
-    "net/http"
     "log"
-    "strings"
+    "net/http"
+    //"strings"
 
+    "booking-app/models"
     "github.com/beego/beego/v2/client/orm"
     "github.com/beego/beego/v2/server/web"
-    "booking-app/models"
 )
 
-type LocationController struct {
+type ImageDescriptionController struct {
     web.Controller
 }
 
-func (c *LocationController) FetchHotelImagesAndDescription() {
+// FetchHotelImagesAndDescriptions fetches images and descriptions for hotels
+func (c *ImageDescriptionController) FetchHotelImagesAndDescriptions() {
     o := orm.NewOrm()
-    var rentalProperties []models.RentalProperty
 
-    // Fetch all rental properties from the database
-    _, err := o.QueryTable(new(models.RentalProperty)).All(&rentalProperties)
+    // Retrieve all RentalProperty entries (limit to 2 for testing)
+    var rentalProperties []models.RentalProperty
+    _, err := o.QueryTable(new(models.RentalProperty)).Limit(2).All(&rentalProperties)
     if err != nil {
-        c.Data["json"] = map[string]interface{}{"error": fmt.Sprintf("Error fetching rental properties: %v", err)}
+        log.Printf("Error fetching rental properties: %v", err)
+        c.Data["json"] = map[string]string{"error": "Failed to fetch rental properties"}
         c.ServeJSON()
         return
     }
 
-    var hotelDetailsList []map[string]interface{}
-
+    // Process each rental property
     for _, rentalProperty := range rentalProperties {
         hotelID := rentalProperty.HotelID
         url := fmt.Sprintf("https://booking-com18.p.rapidapi.com/web/stays/details?id=%s&checkIn=2025-01-09&checkOut=2025-01-15", hotelID)
@@ -38,7 +39,7 @@ func (c *LocationController) FetchHotelImagesAndDescription() {
 
         req, err := http.NewRequest("GET", url, nil)
         if err != nil {
-            log.Printf("Error creating request for hotel ID %s: %v", hotelID, err)
+            log.Printf("Error creating request for HotelID %s: %v", hotelID, err)
             continue
         }
 
@@ -48,97 +49,120 @@ func (c *LocationController) FetchHotelImagesAndDescription() {
         client := &http.Client{}
         resp, err := client.Do(req)
         if err != nil {
-            log.Printf("Error making request for hotel ID %s: %v", hotelID, err)
+            log.Printf("Error making request for HotelID %s: %v", hotelID, err)
             continue
         }
         defer resp.Body.Close()
 
-        log.Printf("API Response Status for hotel ID %s: %s", hotelID, resp.Status)
+        log.Printf("API Response Status for HotelID %s: %s", hotelID, resp.Status)
 
         body, err := io.ReadAll(resp.Body)
         if err != nil {
-            log.Printf("Error reading response body for hotel ID %s: %v", hotelID, err)
+            log.Printf("Error reading response body for HotelID %s: %v", hotelID, err)
             continue
         }
 
-        log.Printf("Raw API Response for hotel ID %s: %s", hotelID, string(body))
+        // Log the raw response for debugging
+        log.Printf("Raw API Response for HotelID %s: %s", hotelID, string(body))
 
         var apiResponse map[string]interface{}
         if err := json.Unmarshal(body, &apiResponse); err != nil {
-            log.Printf("Error unmarshalling response for hotel ID %s: %v", hotelID, err)
+            log.Printf("Error unmarshalling response for HotelID %s: %v", hotelID, err)
             continue
         }
 
+        // Check if 'data' exists in the response
         data, ok := apiResponse["data"].(map[string]interface{})
         if !ok {
-            log.Printf("Invalid data format in response for hotel ID %s", hotelID)
+            log.Printf("Missing data in response for HotelID %s", hotelID)
             continue
         }
 
-        propertyImg := ""
+        // Parse hotelPhotos
+        hotelPhotos, ok := data["hotelPhotos"].([]interface{})
+        if !ok {
+            log.Printf("Missing or invalid hotelPhotos for HotelID %s", hotelID)
+            continue
+        }
+
+        var images []string
+        for _, photo := range hotelPhotos {
+            photoMap, ok := photo.(map[string]interface{})
+            if ok {
+                if thumbURL, ok := photoMap["thumb_url"].(string); ok {
+                    images = append(images, thumbURL)
+                }
+            }
+        }
+
+        // Parse hotelTranslation
+        hotelTranslations, ok := data["hotelTranslation"].([]interface{})
+        if !ok || len(hotelTranslations) == 0 {
+            log.Printf("Missing or invalid hotelTranslation for HotelID %s", hotelID)
+            continue
+        }
+
         description := ""
-
-        // Parse hotelPhotos to get all images of thumb_url
-        if hotelPhotos, ok := data["hotelPhotos"].([]interface{}); ok {
-            var images []string
-            for _, photo := range hotelPhotos {
-                if photoMap, ok := photo.(map[string]interface{}); ok {
-                    if thumbURL, ok := photoMap["thumb_url"].(string); ok {
-                        images = append(images, thumbURL)
-                    }
-                }
-            }
-            propertyImg = strings.Join(images, ", ")
-        }
-
-        // Parse hotelTranslation to get the description
-        if hotelTranslation, ok := data["hotelTranslation"].([]interface{}); ok {
-            if len(hotelTranslation) > 0 {
-                if translationMap, ok := hotelTranslation[0].(map[string]interface{}); ok {
-                    if desc, ok := translationMap["description"].(string); ok {
-                        description = desc
-                    }
-                }
+        if descMap, ok := hotelTranslations[0].(map[string]interface{}); ok {
+            if desc, ok := descMap["description"].(string); ok {
+                description = desc
             }
         }
 
-        // Update the existing rental property with additional details
-        rentalProperty.PropertyImg = propertyImg
-        rentalProperty.Description = description
+        // Parse CityInTrans
+        cityInTrans, ok := data["cityInTrans"].(string)
+        if !ok {
+            cityInTrans = ""
+        }
 
-        if _, err := o.Update(&rentalProperty); err != nil {
-            log.Printf("Error updating rental property for hotel ID %s: %v", hotelID, err)
+        // Insert or update PropertyDetails table
+        propertyDetails := models.PropertyDetails{}
+        if err := o.QueryTable(new(models.PropertyDetails)).Filter("HotelID", hotelID).One(&propertyDetails); err == orm.ErrNoRows {
+            // No entry exists, so insert a new record
+            propertyDetails = models.PropertyDetails{
+                HotelID:     hotelID,
+                Description: description,
+                CityInTrans: cityInTrans,
+                ImageUrl1:   getImageUrl(images, 0),
+                ImageUrl2:   getImageUrl(images, 1),
+                ImageUrl3:   getImageUrl(images, 2),
+                ImageUrl4:   getImageUrl(images, 3),
+                ImageUrl5:   getImageUrl(images, 4),
+            }
+            if _, err := o.Insert(&propertyDetails); err != nil {
+                log.Printf("Error inserting PropertyDetails for HotelID %s: %v", hotelID, err)
+                continue
+            }
+            log.Printf("PropertyDetails inserted successfully for HotelID %s", hotelID)
+        } else if err == nil {
+            // Entry exists, so update it
+            propertyDetails.Description = description
+            propertyDetails.CityInTrans = cityInTrans
+            propertyDetails.ImageUrl1 = getImageUrl(images, 0)
+            propertyDetails.ImageUrl2 = getImageUrl(images, 1)
+            propertyDetails.ImageUrl3 = getImageUrl(images, 2)
+            propertyDetails.ImageUrl4 = getImageUrl(images, 3)
+            propertyDetails.ImageUrl5 = getImageUrl(images, 4)
+            if _, err := o.Update(&propertyDetails); err != nil {
+                log.Printf("Error updating PropertyDetails for HotelID %s: %v", hotelID, err)
+                continue
+            }
+            log.Printf("PropertyDetails updated successfully for HotelID %s", hotelID)
+        } else {
+            log.Printf("Error querying PropertyDetails for HotelID %s: %v", hotelID, err)
             continue
         }
-
-        log.Printf("Rental property updated successfully for hotel ID %s", hotelID)
-
-        // Collect details for JSON output
-        hotelDetails := map[string]interface{}{
-            "IDHotel":       rentalProperty.IDHotel,
-            "HotelID":       rentalProperty.HotelID,
-            "HotelName":     rentalProperty.HotelName,
-            "DestID":        rentalProperty.DestID,
-            "Location":      rentalProperty.Location,
-            "Rating":        rentalProperty.Rating,
-            "ReviewCount":   rentalProperty.ReviewCount,
-            "Price":         rentalProperty.Price,
-            "NumBeds":       rentalProperty.NumBeds,
-            "NumBedR":       rentalProperty.NumBedR,
-            "NumBaths":      rentalProperty.NumBaths,
-            "Bedroom":       rentalProperty.Bedroom,
-            "Guests":        rentalProperty.Guests,
-            "PropertyType":  rentalProperty.PropertyType,
-            "Amenities":     rentalProperty.Amenities,
-            "PropertyImg":   rentalProperty.PropertyImg,
-            "Description":   rentalProperty.Description,
-        }
-        hotelDetailsList = append(hotelDetailsList, hotelDetails)
     }
 
-    c.Data["json"] = map[string]interface{}{
-        "message": "Rental properties updated successfully",
-        "details": hotelDetailsList,
-    }
+    // Send response
+    c.Data["json"] = map[string]string{"message": "Hotel details processed and stored successfully"}
     c.ServeJSON()
+}
+
+// getImageUrl safely retrieves an image URL from the list
+func getImageUrl(images []string, index int) string {
+    if index < len(images) {
+        return images[index]
+    }
+    return ""
 }

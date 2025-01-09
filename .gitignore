@@ -1,0 +1,28 @@
+# Ignore Go build artifacts
+booking-app
+booking-app.exe
+booking-app.exe~
+
+# Ignore dependency directories
+/vendor/
+
+# Ignore Docker-related files
+docker-compose.override.yml
+
+# Ignore generated files
+*.json
+
+# Ignore IDE or editor-specific files
+*.swp
+*.swo
+.idea/
+.vscode/
+
+# Ignore binary files
+*.exe
+*.out
+*.dll
+*.so
+
+# Ignore logs
+*.log
