@@ -11,3 +11,13 @@ postgres=# CREATE DATABASE booking_db;
 CREATE DATABASE
 postgres=# \c booking_db
 You are now connected to database "booking_db" as user "postgres".
+
+{
+    "error": "Error fetching stays data: unexpected type for data field, got: <nil>"
+
+}
+
+-- WHY THIS??
+location= results: location: displayLocation:"Murray Hill, New York"
+rating= results: basicPropertyData:  reviews: totalScore:8.5 
+review_count = results: basicPropertyData:  reviews: reviewsCount:933

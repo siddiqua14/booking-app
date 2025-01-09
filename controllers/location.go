@@ -24,7 +24,7 @@ type HotelDetails struct {
 	HotelID    string  `json:"hotel_id"`
 	HotelName  string  `json:"hotel_name"`
 	DestID     string  `json:"dest_id"`
-	Location   string  `json:"location"`
+    Location   string  `json:"location"`
 	Rating     float64 `json:"rating"`
 	ReviewCount int    `json:"review_count"`
 }
@@ -216,35 +216,34 @@ func getHotelData(destID, destType string) ([]HotelDetails, error) {
                 }
                 
                 // Extract location from basicPropertyData -> location -> displayLocation
-                locationData, ok := itemMap["basicPropertyData"].(map[string]interface{})
+                // Extract location
+                basicPropertyData, ok := itemMap["basicPropertyData"].(map[string]interface{})
                 if !ok {
                     continue
                 }
-                locationMap, ok := locationData["location"].(map[string]interface{})
+                locationData, ok := basicPropertyData["location"].(map[string]interface{})
                 if !ok {
                     continue
                 }
-                location, ok := locationMap["displayLocation"].(string)
+                location, ok := locationData["displayLocation"].(string)
                 if !ok {
-                    continue
-                }
-
-                // Extract rating from basicPropertyData -> reviews -> totalScore
-                reviews, ok := locationData["reviews"].(map[string]interface{})
-                if !ok {
-                    continue
-                }
-                rating, ok := reviews["totalScore"].(float64)
-                if !ok {
-                    continue
+                    location = "Unknown"
                 }
 
-                // Extract review count from basicPropertyData -> reviews -> reviewCount
-                reviewCount, ok := reviews["reviewCount"].(int)
-                if !ok {
-                    continue
+                // Extract rating
+                reviews, ok := basicPropertyData["reviews"].(map[string]interface{})
+                var rating float64
+                if ok {
+                    rating, _ = reviews["totalScore"].(float64)
                 }
 
+                // Extract review count
+                var reviewCount int
+                if ok {
+                    if rc, ok := reviews["reviewCount"].(float64); ok {
+                        reviewCount = int(rc)
+                    }
+                }
                 // Convert hotelID and hotelName to string
                 hotelIDStr := fmt.Sprintf("%v", hotelID)
                 hotelNameStr := fmt.Sprintf("%v", hotelName)
