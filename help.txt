@@ -21,3 +21,40 @@ You are now connected to database "booking_db" as user "postgres".
 location= results: location: displayLocation:"Murray Hill, New York"
 rating= results: basicPropertyData:  reviews: totalScore:8.5 
 review_count = results: basicPropertyData:  reviews: reviewsCount:933
+
+
+ rooms := data["rooms"].(map[string]interface{})
+    var images []string
+    for _, room := range rooms {
+        roomDetails := room.(map[string]interface{})
+        photos := roomDetails["photos"].([]interface{})
+        for i, photo := range photos {
+            if i >= 5 {
+                break
+            }
+            images = append(images, photo.(map[string]interface{})["url_original"].(string))
+        }
+    }
+
+    type HotelDetailResponse struct {
+    Data struct {
+        AvailableRooms     int    `json:"available_rooms"`
+        RoomRecommendation struct {
+            Babies int `json:"babies"`
+            Adults int `json:"adults"`
+        } `json:"room_recommendation"`
+        AccommodationTypeName string `json:"accommodation_type_name"`
+        FacilitiesBlock struct {
+            Facilities []struct {
+                Name string `json:"name"`
+            } `json:"facilities"`
+        } `json:"facilities_block"`
+        Rooms []struct {
+            Photos []struct {
+                UrlOriginal string `json:"url_original"`
+            } `json:"photos"`
+        } `json:"rooms"`
+    } `json:"data"`
+}
+
+SELECT * FROM rental_property;

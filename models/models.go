@@ -22,13 +22,22 @@ type Hotel struct {
 }
 
 type RentalProperty struct {
-    Id        int64  `orm:"auto;pk"`
-    HotelId   *Hotel `orm:"rel(fk)"`
-    Name      string `orm:"size(255);null"`
-    Type      string `orm:"size(100);null"`
-    Bedrooms  int    
-    Bathrooms int    
-    Amenities string `orm:"type(text);null"`
+    ID            int     `orm:"auto"`
+    IDHotel       int     `orm:"index"`
+    HotelID       string  `orm:"size(100)"`
+    HotelName     string  `orm:"size(255)"`
+    DestID        string  `orm:"size(100)"`
+    Location      string  `orm:"size(255)"`
+    Rating        float64 `orm:"digits(2);decimals(1)"`
+    ReviewCount   int
+    Price         string  `orm:"size(100)"`
+    NumBeds       int
+    NumBedR       int
+    NumBaths      int
+    Bedroom       int
+    Guests        int
+    PropertyType  string  `orm:"size(100)"`
+    Amenities     string  `orm:"type(text)"`
 }
 
 type PropertyDetails struct {
