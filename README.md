@@ -153,3 +153,4 @@ Access the application at `http://localhost:8080`.
   - **Controller**: `PropertyController`
   - **Method**: `GET`
   - **Description**: Provides detailed information for a specific property.
+  - for example: go to the specific hotel[times-square](http://localhost:8080/v1/property/details?id=us/element-times-square) 

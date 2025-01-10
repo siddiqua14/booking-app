@@ -135,7 +135,6 @@ func (c *PropertyController) GetPropertyDetails() {
         "Description": details.Description,
     }
 
-    c.Data["Property"] = enhancedProperty
-    c.TplName = "property_details.tpl"
-    c.Render()
+    c.Data["json"] = enhancedProperty
+    c.ServeJSON()
 }
