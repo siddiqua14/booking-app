@@ -90,12 +90,9 @@ var storedHotelIDs []int
 
 
 // Init function to initialize apiBaseUrl and apiKey
-
 func (c *LocationController) Init(ctx *context.Context, controllerName, actionName string, app interface{}) {
-    // Call the base Init method
     c.Controller.Init(ctx, controllerName, actionName, app)
 
-    // Retrieve base URL and API key from app.conf
     apiBaseUrl, err := web.AppConfig.String("API_BASE_URL")
     if err != nil {
         c.Data["json"] = map[string]interface{}{"error": fmt.Sprintf("Error retrieving API Base URL: %v", err)}
@@ -110,7 +107,6 @@ func (c *LocationController) Init(ctx *context.Context, controllerName, actionNa
         return
     }
 
-    // Set the fields
     c.apiBaseUrl = apiBaseUrl
     c.apiKey = apiKey
 }
@@ -212,43 +208,50 @@ func (c *LocationController) FetchAndStoreLocations() {
 }
 
 func (c *LocationController) FetchFilteredStaysData() {
-    // Log the stored values
-    log.Printf("Fetching data with destID: %s, destType: %s", storedDestId, storedDestType)
-    
-    hotels, err := getHotelData(storedDestId, storedDestType)
+    // Fetch all locations from the database
+    o := orm.NewOrm()
+    var locations []models.Location
+    _, err := o.QueryTable("location").All(&locations)
     if err != nil {
-        log.Printf("Error in getHotelData: %v", err)
-        c.Data["json"] = map[string]interface{}{"error": fmt.Sprintf("Error fetching stays data: %v", err)}
+        c.Data["json"] = map[string]interface{}{"error": "Failed to retrieve locations"}
         c.ServeJSON()
         return
     }
 
-    if len(hotels) == 0 {
-        log.Print("No hotels found in the response")
+    var allHotels []HotelDetails
+    for _, loc := range locations {
+        // Fetch data for each location
+        hotels, err := getHotelData(loc.DestId, loc.DestType, c.apiBaseUrl, c.apiKey)
+        if err != nil {
+            log.Printf("Error fetching data for destID: %s, destType: %s - %v", loc.DestId, loc.DestType, err)
+            continue
+        }
+
+        allHotels = append(allHotels, hotels...)
+    }
+
+    if len(allHotels) == 0 {
+        log.Print("No hotels found for any location")
         c.Data["json"] = map[string]interface{}{
-            "message": "No stays found for the given location.",
+            "message": "No stays found for any location.",
         }
         c.ServeJSON()
         return
     }
-    // Store all hotel IDs for fetching hotel details later
-    for _, hotel := range hotels {
-        storedHotelIDs = append(storedHotelIDs, hotel.IDHotel)
-    }
 
     c.Data["json"] = map[string]interface{}{
         "message": "Stays data fetched successfully",
-        "results": hotels,
+        "results": allHotels,
     }
     c.ServeJSON()
 }
 
-func getHotelData(destID, destType string) ([]HotelDetails, error) {
+func getHotelData(destID, destType, apiBaseUrl, apiKey string) ([]HotelDetails, error) {
     if destID == "" || destType == "" {
         return nil, fmt.Errorf("destID and destType cannot be empty")
     }
 
-    url := fmt.Sprintf("https://booking-com18.p.rapidapi.com/web/stays/search?destId=%s&destType=%s&checkIn=2025-01-12&checkOut=2025-01-31", destID, destType)
+    url := fmt.Sprintf("%s/web/stays/search?destId=%s&destType=%s&checkIn=2025-01-12&checkOut=2025-01-31", apiBaseUrl, destID, destType)
     log.Printf("Making request to URL: %s", url)
 
     req, err := http.NewRequest("GET", url, nil)
@@ -257,7 +260,7 @@ func getHotelData(destID, destType string) ([]HotelDetails, error) {
     }
 
     req.Header.Add("x-rapidapi-host", "booking-com18.p.rapidapi.com")
-    req.Header.Add("x-rapidapi-key", "3c935dc998msh43f2b397ec5205dp174193jsnb246f518916d")
+    req.Header.Add("x-rapidapi-key", apiKey)
 
     client := &http.Client{}
     resp, err := client.Do(req)
@@ -273,12 +276,10 @@ func getHotelData(destID, destType string) ([]HotelDetails, error) {
         return nil, fmt.Errorf("error reading response body: %v", err)
     }
 
-    // Log the raw response for debugging
     log.Printf("Raw API Response: %s", string(body))
 
     var apiResponse APIResponse
     if err := json.Unmarshal(body, &apiResponse); err != nil {
-        // Try to unmarshal into a map to see the actual structure
         var rawResponse map[string]interface{}
         if jsonErr := json.Unmarshal(body, &rawResponse); jsonErr == nil {
             log.Printf("API Response Structure: %+v", rawResponse)
@@ -286,12 +287,10 @@ func getHotelData(destID, destType string) ([]HotelDetails, error) {
         return nil, fmt.Errorf("error unmarshaling response: %v", err)
     }
 
-    // Check if the response was successful
     if !apiResponse.Status {
         return nil, fmt.Errorf("API returned error: %s", apiResponse.Message)
     }
 
-    // Check if we have any results in the data
     if len(apiResponse.Data.Results) == 0 {
         log.Printf("API returned success but no results. Total records: %d", apiResponse.Meta.TotalRecords)
         return nil, nil
@@ -302,7 +301,7 @@ func getHotelData(destID, destType string) ([]HotelDetails, error) {
 
     for i, result := range apiResponse.Data.Results {
         log.Printf("Processing result %d: %+v", i, result)
-        
+
         hotel := HotelDetails{
             IDHotel:     result.BasicPropertyData.ID,
             HotelID:     result.ID,
@@ -313,23 +312,19 @@ func getHotelData(destID, destType string) ([]HotelDetails, error) {
             ReviewCount: result.BasicPropertyData.Reviews.ReviewsCount,
             Price:       result.PriceDisplayInfoIrene.DisplayPrice.AmountPerStay.Amount,
             NumBeds:     result.MatchingUnitConfigurations.CommonConfiguration.NbAllBeds,
-            NumBedR:     result.MatchingUnitConfigurations.CommonConfiguration.NbAllBeds, // Assuming NbAllBedR is a typo
+            NumBedR:     result.MatchingUnitConfigurations.CommonConfiguration.NbAllBedR,
             NumBaths:    result.MatchingUnitConfigurations.CommonConfiguration.NbBathrooms,
         }
 
-        // Append to hotels slice
         hotels = append(hotels, hotel)
 
-        // Check if the hotel already exists in the database
         existingRentalProperty := models.RentalProperty{IDHotel: hotel.IDHotel}
         err := o.Read(&existingRentalProperty, "IDHotel")
         if err == nil {
-            // Hotel already exists, skip insertion
             log.Printf("Hotel with IDHotel %d already exists, skipping insertion.", hotel.IDHotel)
             continue
         }
 
-        // Map HotelDetails to RentalProperty
         rentalProperty := models.RentalProperty{
             IDHotel:     hotel.IDHotel,
             HotelID:     hotel.HotelID,
@@ -344,7 +339,6 @@ func getHotelData(destID, destType string) ([]HotelDetails, error) {
             NumBaths:    hotel.NumBaths,
         }
 
-        // Insert rentalProperty into the database
         _, err = o.Insert(&rentalProperty)
         if err != nil {
             log.Printf("Error inserting rental property: %v", err)
@@ -356,14 +350,23 @@ func getHotelData(destID, destType string) ([]HotelDetails, error) {
     log.Printf("Processed %d rental properties successfully", len(hotels))
     return hotels, nil
 }
-
 func (c *LocationController) FetchHotelDetails() {
     o := orm.NewOrm()
 
+    // Fetch top 25 records from the rental_property table
+    var rentalProperties []models.RentalProperty
+    _, err := o.QueryTable("rental_property").Limit(25).All(&rentalProperties)
+    if err != nil {
+        c.Data["json"] = map[string]interface{}{"error": "Failed to retrieve rental properties"}
+        c.ServeJSON()
+        return
+    }
+
     var hotelDetailsList []map[string]interface{}
 
-    for _, hotelID := range storedHotelIDs {
-        url := fmt.Sprintf("https://booking-com18.p.rapidapi.com/stays/detail?hotelId=%d&checkinDate=2025-01-09&checkoutDate=2025-01-15&units=metric", hotelID)
+    for _, rentalProperty := range rentalProperties {
+        hotelID := rentalProperty.IDHotel
+        url := fmt.Sprintf("https://booking-com18.p.rapidapi.com/stays/detail?hotelId=%d&checkinDate=2025-01-10&checkoutDate=2025-01-15&units=metric", hotelID)
         log.Printf("Making request to URL: %s", url)
 
         req, err := http.NewRequest("GET", url, nil)
@@ -373,7 +376,7 @@ func (c *LocationController) FetchHotelDetails() {
         }
 
         req.Header.Add("x-rapidapi-host", "booking-com18.p.rapidapi.com")
-        req.Header.Add("x-rapidapi-key", "3c935dc998msh43f2b397ec5205dp174193jsnb246f518916d")
+        req.Header.Add("x-rapidapi-key", c.apiKey)
 
         client := &http.Client{}
         resp, err := client.Do(req)
@@ -381,16 +384,16 @@ func (c *LocationController) FetchHotelDetails() {
             log.Printf("Error making request for hotel ID %d: %v", hotelID, err)
             continue
         }
-        defer resp.Body.Close()
 
-        log.Printf("API Response Status for hotel ID %d: %s", hotelID, resp.Status)
-
+        // Ensure the response body is closed after reading
         body, err := io.ReadAll(resp.Body)
+        resp.Body.Close()  // Close response body immediately after reading
         if err != nil {
             log.Printf("Error reading response body for hotel ID %d: %v", hotelID, err)
             continue
         }
 
+        log.Printf("API Response Status for hotel ID %d: %s", hotelID, resp.Status)
         log.Printf("Raw API Response for hotel ID %d: %s", hotelID, string(body))
 
         var apiResponse map[string]interface{}
@@ -466,12 +469,6 @@ func (c *LocationController) FetchHotelDetails() {
         }
 
         // Update the existing rental property with additional details
-        rentalProperty := models.RentalProperty{IDHotel: hotelID}
-        if err := o.Read(&rentalProperty, "IDHotel"); err != nil {
-            log.Printf("Rental property not found for hotel ID %d", hotelID)
-            continue
-        }
-
         rentalProperty.Bedroom = int(availableRooms)
         rentalProperty.Guests = int(totalAdults + totalChildren)
         rentalProperty.PropertyType = accommodationTypeName

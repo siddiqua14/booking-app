@@ -17,5 +17,6 @@ func main() {
     orm.RunSyncdb("default", false, true) // Automatically create the tables in the database
 
     // Start the Beego server
+    web.BConfig.WebConfig.ViewsPath = "views"
     web.Run()
 }

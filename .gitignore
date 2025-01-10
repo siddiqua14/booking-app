@@ -6,8 +6,6 @@ booking-app.exe~
 # Ignore dependency directories
 /vendor/
 
-# Ignore Docker-related files
-docker-compose.override.yml
 
 # Ignore generated files
 *.json

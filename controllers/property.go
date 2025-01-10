@@ -1,11 +1,10 @@
 package controllers
 
 import (
-    "net/http"
+    "strings"
     "github.com/beego/beego/v2/server/web"
     "github.com/beego/beego/v2/client/orm"
     "booking-app/models"
-    
 )
 
 type PropertyController struct {
@@ -14,37 +13,14 @@ type PropertyController struct {
 
 // ListProperties handles the GET request for property listings
 func (c *PropertyController) ListProperties() {
-    // Get query parameters
-    location := c.GetString("location")
-    minPrice, _ := c.GetFloat("min_price")
-    maxPrice, _ := c.GetFloat("max_price")
-    guests, _ := c.GetInt("guests")
-    propertyType := c.GetString("property_type")
+    location := c.GetString("location", "New York")
 
     // Initialize ORM
     o := orm.NewOrm()
     qs := o.QueryTable("rental_property")
 
-    // Apply filters
-    if location != "" {
-        qs = qs.Filter("Location__icontains", location)
-    }
-
-    if minPrice > 0 {
-        qs = qs.Filter("Price__gte", minPrice)
-    }
-
-    if maxPrice > 0 {
-        qs = qs.Filter("Price__lte", maxPrice)
-    }
-
-    if guests > 0 {
-        qs = qs.Filter("Guests__gte", guests)
-    }
-
-    if propertyType != "" {
-        qs = qs.Filter("PropertyType", propertyType)
-    }
+    // Apply location filter
+    qs = qs.Filter("Location__icontains", location)
 
     // Prepare result slice
     var properties []models.RentalProperty
@@ -55,14 +31,6 @@ func (c *PropertyController) ListProperties() {
             "error": "Failed to retrieve properties",
             "details": err.Error(),
         }
-        c.Ctx.Output.SetStatus(500)
-        c.ServeJSON()
-        return
-    }
-
-    // If no properties found
-    if len(properties) == 0 {
-        c.Data["json"] = []map[string]interface{}{}
         c.ServeJSON()
         return
     }
@@ -70,65 +38,49 @@ func (c *PropertyController) ListProperties() {
     // Prepare enhanced property response
     var enhancedProperties []map[string]interface{}
     for _, prop := range properties {
+        var details models.PropertyDetails
+        err := o.QueryTable("property_details").Filter("HotelID", prop.HotelID).One(&details)
+
+        // Handle the error for property details query
+        if err != nil {
+            // If there's an error, use default/empty values for details
+            details = models.PropertyDetails{
+                ImageUrl1:  "", // default empty image URL
+                ImageUrl2:  "",
+                ImageUrl3:  "",
+                ImageUrl4:  "",
+                ImageUrl5:  "",
+                Description: "No description available",
+            }
+        }
+
         enhancedProp := map[string]interface{}{
-            "HotelID":       prop.ID,
-            "HotelName":     prop.Name,
-            "Location":      prop.Location,
-            "Price":         prop.Price,
-            "PropertyType":  prop.PropertyType,
-            "Guests":        prop.Guests,
-            "Rating":        prop.Rating,
-            "ReviewCount":   prop.ReviewCount,
-            "Amenities":     prop.Amenities,
-            "Description":   prop.Description,
+            "ID":           prop.ID,
+            "HotelID":      prop.HotelID,
+            "HotelName":    prop.HotelName,
+            "Location":     prop.Location,
+            "Price":        prop.Price,
+            "PropertyType": prop.PropertyType,
+            "Guests":       prop.Guests,
+            "Rating":       prop.Rating,
+            "ReviewCount":  prop.ReviewCount,
+            "NumBeds":      prop.NumBeds,
+            "NumBedR":      prop.NumBedR,
+            "NumBaths":     prop.NumBaths,
+            "Bedroom":      prop.Bedroom,
+            "Amenities":    strings.Split(prop.Amenities, ","),
+            "HeroImage":    details.ImageUrl1,
         }
         enhancedProperties = append(enhancedProperties, enhancedProp)
     }
 
-    c.Data["json"] = enhancedProperties
-    c.ServeJSON()
+    // Pass data to the template
+    c.Data["Properties"] = enhancedProperties
+    c.TplName = "property_list.tpl"
+    c.Render()
 }
 
 // GetPropertyDetails retrieves detailed information about a specific property
-func (c *PropertyController) GetPropertyDetails() {
-    hotelID, _ := c.GetInt("id")
-
-    o := orm.NewOrm()
-    property := &models.RentalProperty{ID: hotelID}
-
-    err := o.Read(property)
-    if err == orm.ErrNoRows {
-        c.Data["json"] = map[string]string{
-            "error": "Property not found",
-        }
-        c.Ctx.Output.SetStatus(404)
-    } else if err != nil {
-        c.Data["json"] = map[string]string{
-            "error": "Failed to retrieve property details",
-            "details": err.Error(),
-        }
-        c.Ctx.Output.SetStatus(500)
-    } else {
-        // Prepare detailed property response
-        propertyDetails := map[string]interface{}{
-            "HotelID":       property.ID,
-            "HotelName":     property.Name,
-            "Location":      property.Location,
-            "Price":         property.Price,
-            "PropertyType":  property.PropertyType,
-            "Guests":        property.Guests,
-            "Rating":        property.Rating,
-            "ReviewCount":   property.ReviewCount,
-            "Amenities":     property.Amenities,
-            "Description":   property.Description,
-            // Add more details as needed
-        }
-        c.Data["json"] = propertyDetails
-    }
-
-    c.ServeJSON()
-}
-
 func (c *PropertyController) GetPropertyDetails() {
     propertyID := c.GetString("id")
     if propertyID == "" {
@@ -141,7 +93,7 @@ func (c *PropertyController) GetPropertyDetails() {
     o := orm.NewOrm()
     
     var property models.RentalProperty
-    err := o.QueryTable("rental_property").Filter("hotel_id", propertyID).One(&property)
+    err := o.QueryTable("rental_property").Filter("HotelID", propertyID).One(&property)
     if err != nil {
         c.Ctx.Output.Status = 500
         c.Data["json"] = map[string]string{"error": err.Error()}
@@ -150,7 +102,7 @@ func (c *PropertyController) GetPropertyDetails() {
     }
 
     var details models.PropertyDetails
-    err = o.QueryTable("property_details").Filter("hotel_id", propertyID).One(&details)
+    err = o.QueryTable("property_details").Filter("HotelID", propertyID).One(&details)
     if err != nil {
         c.Ctx.Output.Status = 500
         c.Data["json"] = map[string]string{"error": err.Error()}
@@ -158,17 +110,32 @@ func (c *PropertyController) GetPropertyDetails() {
         return
     }
 
-    var location models.Location
-    err = o.QueryTable("location").Filter("dest_id", property.DestID).One(&location)
-    if err != nil {
-        c.Ctx.Output.Status = 500
-        c.Data["json"] = map[string]string{"error": err.Error()}
-        c.ServeJSON()
-        return
+    enhancedProperty := map[string]interface{}{
+        "HotelID":      property.HotelID,
+        "HotelName":    property.HotelName,
+        "Location":     property.Location,
+        "Price":        property.Price,
+        "PropertyType": property.PropertyType,
+        "Guests":       property.Guests,
+        "Rating":       property.Rating,
+        "ReviewCount":  property.ReviewCount,
+        "NumBeds":      property.NumBeds,
+        "NumBedR":      property.NumBedR,
+        "NumBaths":     property.NumBaths,
+        "Bedroom":      property.Bedroom,
+        "Amenities":    strings.Split(property.Amenities, ","),
+        "HeroImage":    details.ImageUrl1,
+        "Images": []string{
+            details.ImageUrl1,
+            details.ImageUrl2,
+            details.ImageUrl3,
+            details.ImageUrl4,
+            details.ImageUrl5,
+        },
+        "Description": details.Description,
     }
 
-    c.Data["Property"] = property
-    c.Data["Details"] = details
-    c.Data["Location"] = location
-    c.TplName = "property-details.html"
+    c.Data["Property"] = enhancedProperty
+    c.TplName = "property_details.tpl"
+    c.Render()
 }

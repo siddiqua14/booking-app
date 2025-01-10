@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Property Details</title>
+    <title>Property Listings</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link rel="stylesheet" href="/static/css/property.css">
 </head>
 <body>
@@ -29,25 +30,28 @@
         </div>
     </header>
 
-    <main>
-        <div class="property-details">
-            <h1>{{.Property.HotelName}}</h1>
-            <p>{{.Property.Location}}</p>
-            <p><strong>Price:</strong> {{.Property.Price}}</p>
-            <p><strong>Type:</strong> {{.Property.PropertyType}}</p>
-            <p><strong>Guests:</strong> {{.Property.Guests}}</p>
-            <p><strong>Rating:</strong> {{.Property.Rating}} ({{.Property.ReviewCount}} Reviews)</p>
-            <p><strong>Beds:</strong> {{.Property.NumBeds}}, <strong>Bedrooms:</strong> {{.Property.NumBedR}}, <strong>Bathrooms:</strong> {{.Property.NumBaths}}</p>
-            <p><strong>Bedrooms:</strong> {{.Property.Bedroom}}</p>
-            <p><strong>Amenities:</strong> {{range .Property.Amenities}}{{.}}, {{end}}</p>
-            <div class="images">
-                {{range .Property.Images}}
-                <img src="{{.}}" alt="Property Image" class="property-image">
-                {{end}}
+    <div id="propertyGrid" class="grid">
+        {{range .Properties}}
+        <div class="property-card">
+            <div class="property-image">
+                <img src="{{if .HeroImage}}{{.HeroImage}}{{else}}/static/images/placeholder.jpg{{end}}" alt="{{.HotelName}}">
             </div>
-            <p>{{.Property.Description}}</p>
+            <div class="property-details">
+                <div class="rating">
+                    <span class="rating-value">{{printf "%.1f" .Rating}}</span>
+                    <span class="review-count">({{.ReviewCount}} Reviews)</span>
+                </div>
+                <h3 class="property-title">
+                    <a href="/property-details?id={{.HotelID}}" target="_blank">{{.HotelName}}</a>
+                </h3>
+                <div class="location">{{.Location}}</div>
+                <div class="price">From {{.Price}}</div>
+                <button class="availability-button" onclick="window.open('/property-details?id={{.HotelID}}', '_blank')">View Availability</button>
+            </div>
         </div>
-    </main>
+        {{end}}
+    </div>
+
     <script src="/static/js/property.js"></script>
 </body>
 </html>

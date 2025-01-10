@@ -23,7 +23,7 @@ func (c *ImageDescriptionController) FetchHotelImagesAndDescriptions() {
 
     // Retrieve all RentalProperty entries (limit to 2 for testing)
     var rentalProperties []models.RentalProperty
-    _, err := o.QueryTable(new(models.RentalProperty)).Limit(2).All(&rentalProperties)
+    _, err := o.QueryTable(new(models.RentalProperty)).Limit(20).All(&rentalProperties)
     if err != nil {
         log.Printf("Error fetching rental properties: %v", err)
         c.Data["json"] = map[string]string{"error": "Failed to fetch rental properties"}
@@ -34,7 +34,7 @@ func (c *ImageDescriptionController) FetchHotelImagesAndDescriptions() {
     // Process each rental property
     for _, rentalProperty := range rentalProperties {
         hotelID := rentalProperty.HotelID
-        url := fmt.Sprintf("https://booking-com18.p.rapidapi.com/web/stays/details?id=%s&checkIn=2025-01-09&checkOut=2025-01-15", hotelID)
+        url := fmt.Sprintf("https://booking-com18.p.rapidapi.com/web/stays/details?id=%s&checkIn=2025-01-10&checkOut=2025-01-15", hotelID)
         log.Printf("Making request to URL: %s", url)
 
         req, err := http.NewRequest("GET", url, nil)
