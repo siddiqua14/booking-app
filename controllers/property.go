@@ -1,6 +1,7 @@
 package controllers
 
 import (
+    "net/http"
     "github.com/beego/beego/v2/server/web"
     "github.com/beego/beego/v2/client/orm"
     "booking-app/models"
@@ -126,4 +127,48 @@ func (c *PropertyController) GetPropertyDetails() {
     }
 
     c.ServeJSON()
+}
+
+func (c *PropertyController) GetPropertyDetails() {
+    propertyID := c.GetString("id")
+    if propertyID == "" {
+        c.Ctx.Output.Status = 400
+        c.Data["json"] = map[string]string{"error": "Property ID is required"}
+        c.ServeJSON()
+        return
+    }
+
+    o := orm.NewOrm()
+    
+    var property models.RentalProperty
+    err := o.QueryTable("rental_property").Filter("hotel_id", propertyID).One(&property)
+    if err != nil {
+        c.Ctx.Output.Status = 500
+        c.Data["json"] = map[string]string{"error": err.Error()}
+        c.ServeJSON()
+        return
+    }
+
+    var details models.PropertyDetails
+    err = o.QueryTable("property_details").Filter("hotel_id", propertyID).One(&details)
+    if err != nil {
+        c.Ctx.Output.Status = 500
+        c.Data["json"] = map[string]string{"error": err.Error()}
+        c.ServeJSON()
+        return
+    }
+
+    var location models.Location
+    err = o.QueryTable("location").Filter("dest_id", property.DestID).One(&location)
+    if err != nil {
+        c.Ctx.Output.Status = 500
+        c.Data["json"] = map[string]string{"error": err.Error()}
+        c.ServeJSON()
+        return
+    }
+
+    c.Data["Property"] = property
+    c.Data["Details"] = details
+    c.Data["Location"] = location
+    c.TplName = "property-details.html"
 }

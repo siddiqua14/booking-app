@@ -17,5 +17,5 @@ func init() {
     web.Router("/v1/property/list", &controllers.PropertyController{}, "get:ListProperties")
     
     // API route for AJAX calls
-    
+    web.Router("/v1/property/details", &controllers.PropertyController{}, "get:GetPropertyDetails")
 }

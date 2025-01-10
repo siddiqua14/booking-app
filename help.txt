@@ -60,3 +60,5 @@ review_count = results: basicPropertyData:  reviews: reviewsCount:933
 SELECT * FROM rental_property;
 DROP TABLE rental_property;
 DROP TABLE property_details;
+
+http://localhost:8080/v1/property/details?id=<property_id>.

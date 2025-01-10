@@ -16,3 +16,14 @@ function searchLocation() {
 window.onload = () => {
     searchLocation();
 };
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Add any JavaScript interactions here
+    const searchForm = document.querySelector('.search-form');
+    if (searchForm) {
+        searchForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            // Handle search form submission
+        });
+    }
+});
