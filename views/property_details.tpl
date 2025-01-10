@@ -28,7 +28,7 @@
     </header>
 
     <main>
-        <div class="property-details">
+        <div class="property-detail">
             <h1>{{.Property.HotelName}}</h1>
             <p><strong>Location:</strong> {{.Property.Location}}</p>
             <p><strong>Price:</strong> {{.Property.Price}}</p>
