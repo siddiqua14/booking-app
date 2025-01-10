@@ -24,8 +24,6 @@
                     <option value="4">4 Guests</option>
                     <option value="5">5 Guests</option>
                 </select>
-                <button id="search-button">Search</button>
-                <button id="close-button">Close</button>
             </div>
         </div>
     </header>
