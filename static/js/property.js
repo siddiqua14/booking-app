@@ -54,3 +54,49 @@ function displayProperties(properties) {
         propertyGrid.innerHTML += propertyCard;
     });
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Get the property ID from the URL query string
+    const urlParams = new URLSearchParams(window.location.search);
+    const propertyID = urlParams.get('id');
+    
+    if (propertyID) {
+        fetchPropertyDetails(propertyID);
+    } else {
+        console.error('Property ID is missing in the URL');
+    }
+});
+
+function fetchPropertyDetails(propertyID) {
+    fetch(`/v1/property/details?id=${encodeURIComponent(propertyID)}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data) {
+                displayPropertyDetails(data);
+            } else {
+                console.error('No data received or property not found');
+            }
+        })
+        .catch(error => console.error('Error fetching property details:', error));
+}
+
+function displayPropertyDetails(property) {
+    const propertyDetailsContainer = document.querySelector('.property-details');
+    propertyDetailsContainer.innerHTML = `
+        <h1>${property.HotelName}</h1>
+        <p><strong>Location:</strong> ${property.Location}</p>
+        <p><strong>Price:</strong> ${property.Price}</p>
+        <p><strong>Type:</strong> ${property.PropertyType}</p>
+        <p><strong>Guests:</strong> ${property.Guests}</p>
+        <p><strong>Rating:</strong> ${property.Rating} (${property.ReviewCount} Reviews)</p>
+        <p><strong>Beds:</strong> ${property.NumBeds}</p>
+        <p><strong>Bedrooms:</strong> ${property.NumBedR}</p>
+        <p><strong>Bathrooms:</strong> ${property.NumBaths}</p>
+        <p><strong>Bedrooms:</strong> ${property.Bedroom}</p>
+        <p><strong>Amenities:</strong> ${property.Amenities.join(', ')}</p>
+        <div class="images">
+            ${property.Images.map(image => `<img src="${image}" alt="Property Image" class="property-image">`).join('')}
+        </div>
+        <p>${property.Description}</p>
+    `;
+}

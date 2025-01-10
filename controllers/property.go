@@ -135,6 +135,8 @@ func (c *PropertyController) GetPropertyDetails() {
         "Description": details.Description,
     }
 
-    c.Data["json"] = enhancedProperty
-    c.ServeJSON()
+    // Pass data to the template
+    c.Data["Property"] = enhancedProperty
+    c.TplName = "property_details.tpl"
+    c.Render()
 }

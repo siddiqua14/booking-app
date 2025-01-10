@@ -32,12 +32,14 @@
     <main>
         <div class="property-details">
             <h1>{{.Property.HotelName}}</h1>
-            <p>{{.Property.Location}}</p>
+            <p><strong>Location:</strong> {{.Property.Location}}</p>
             <p><strong>Price:</strong> {{.Property.Price}}</p>
             <p><strong>Type:</strong> {{.Property.PropertyType}}</p>
             <p><strong>Guests:</strong> {{.Property.Guests}}</p>
             <p><strong>Rating:</strong> {{.Property.Rating}} ({{.Property.ReviewCount}} Reviews)</p>
-            <p><strong>Beds:</strong> {{.Property.NumBeds}}, <strong>Bedrooms:</strong> {{.Property.NumBedR}}, <strong>Bathrooms:</strong> {{.Property.NumBaths}}</p>
+            <p><strong>Beds:</strong> {{.Property.NumBeds}}</p>
+            <p><strong>Bedrooms:</strong> {{.Property.NumBedR}}</p>
+            <p><strong>Bathrooms:</strong> {{.Property.NumBaths}}</p>
             <p><strong>Bedrooms:</strong> {{.Property.Bedroom}}</p>
             <p><strong>Amenities:</strong> {{range .Property.Amenities}}{{.}}, {{end}}</p>
             <div class="images">
