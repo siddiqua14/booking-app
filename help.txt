@@ -16,3 +16,4 @@ DROP TABLE rental_property;
 DROP TABLE property_details;
 
 http://localhost:8080/v1/property/details?id=<property_id>.
+http://localhost:5050/login?next=/

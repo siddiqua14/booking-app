@@ -34,7 +34,7 @@ func (c *ImageDescriptionController) FetchHotelImagesAndDescriptions() {
     // Process each rental property
     for _, rentalProperty := range rentalProperties {
         hotelID := rentalProperty.HotelID
-        url := fmt.Sprintf("https://booking-com18.p.rapidapi.com/web/stays/details?id=%s&checkIn=2025-01-10&checkOut=2025-01-15", hotelID)
+        url := fmt.Sprintf("https://booking-com18.p.rapidapi.com/web/stays/details?id=%s&checkIn=2025-02-12&checkOut=2025-02-18", hotelID)
         log.Printf("Making request to URL: %s", url)
 
         req, err := http.NewRequest("GET", url, nil)
